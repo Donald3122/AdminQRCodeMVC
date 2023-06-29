@@ -15,7 +15,7 @@ using NPOI.Util;
 
 namespace AdminQRCodeMVC.Controllers
 {
-    //I was here)
+    //fsdfseefg
     [ApiController]
     [Route("api/pointsale")]
     public class PointSaleController : Controller
