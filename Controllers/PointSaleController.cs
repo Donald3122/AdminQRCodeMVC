@@ -17,6 +17,7 @@ namespace AdminQRCodeMVC.Controllers
 {
     [ApiController]
     [Route("api/pointsale")]
+    //ffff
     public class PointSaleController : ControllerBase
     {
         [HttpPost]
