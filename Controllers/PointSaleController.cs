@@ -1,9 +1,13 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
 using AdminQRCodeMVC.Models;
+using QRCoder;
+using System.Drawing.Imaging;
+using System.Drawing;
 
 namespace AdminQRCodeMVC.Controllers
 {
@@ -40,7 +44,6 @@ namespace AdminQRCodeMVC.Controllers
             return View("CreatePointSale", searchResults);
         }
 
-
         public async Task<IActionResult> CreatePointSale()
         {
             // Получение списка точек продажи из JSON данных
@@ -52,6 +55,48 @@ namespace AdminQRCodeMVC.Controllers
             }
 
             return View("CreatePointSale", new List<PointSale>());
+        }
+
+        [HttpPost]
+        public IActionResult GenerateQRCode(int id)
+        {
+            if (_merchants == null)
+            {
+                // Если _merchants не инициализирован, выполните соответствующие действия или верните ошибку
+                return RedirectToAction("CreatePointSale");
+            }
+
+            // Создаем список ссылок на QR-коды
+            List<string> qrCodeLinks = new List<string>();
+
+            foreach (var pointSale in _merchants)
+            {
+                // Создание qr-кода на основе данных точки продажи
+                QRCodeGenerator qrGenerator = new QRCodeGenerator();
+                QRCodeData qrCodeData = qrGenerator.CreateQrCode(pointSale.qr_data, QRCodeGenerator.ECCLevel.Q);
+                QRCode qrCode = new QRCode(qrCodeData);
+
+                using (Bitmap qrCodeImage = qrCode.GetGraphic(10))
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    qrCodeImage.Save(ms, ImageFormat.Png);
+                    byte[] qrCodeBytes = ms.ToArray();
+
+                    // Преобразование изображения qr-кода в строку Base64
+                    string qrCodeImageBase64 = Convert.ToBase64String(qrCodeBytes);
+
+                    // Добавляем ссылку на QR-код в список
+                    qrCodeLinks.Add(qrCodeImageBase64);
+                }
+            }
+
+            // Сохранение ссылок на QR-коды в файле "QR_Codes.txt"
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "QR_Codes.txt");
+            System.IO.File.WriteAllLines(filePath, qrCodeLinks);
+
+            // Перенаправление на страницу точек продажи после сохранения qr-кодов
+            return RedirectToAction("CreatePointSale");
+
         }
     }
 }

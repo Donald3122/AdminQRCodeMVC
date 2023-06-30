@@ -1,5 +1,9 @@
 ﻿@model List<AdminQRCodeMVC.Models.PointSale>
 
+@using System.Drawing.Imaging
+@using System.Drawing
+@using QRCoder
+
 <h2>Таблица данных</h2>
 
 <form method="get" action="@Url.Action("SearchPointSale", "PointSale")">
@@ -19,17 +23,41 @@
             </tr>
         </thead>
         <tbody>
-            @foreach (var item in Model)
+            @foreach (var pointSale in Model)
             {
                 <tr>
-                    <td>@item.Id</td>
-                    <td>@item.Title</td>
-                    <td>@item.State</td>
-                    <td>@item.qr_data</td>
+                    <td>@pointSale.Id</td>
+                    <td>@pointSale.Title</td>
+                    <td>@pointSale.State</td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(pointSale.qr_data))
+                        {
+                            QRCodeGenerator qrGenerator = new QRCodeGenerator();
+                            QRCodeData qrCodeData = qrGenerator.CreateQrCode(pointSale.qr_data, QRCodeGenerator.ECCLevel.Q);
+                            QRCode qrCode = new QRCode(qrCodeData);
+
+                            using (Bitmap qrCodeImage = qrCode.GetGraphic(10))
+                            using (MemoryStream ms = new MemoryStream())
+                            {
+                                qrCodeImage.Save(ms, ImageFormat.Png);
+                                byte[] qrCodeBytes = ms.ToArray();
+                                string qrCodeBase64 = Convert.ToBase64String(qrCodeBytes);
+                                <img src="data:image/png;base64,@qrCodeBase64" alt="QR-код" />
+                            }
+                        }
+                        else
+                        {
+                            <span>QR-код отсутствует</span>
+                        }
+                    </td>
                 </tr>
             }
         </tbody>
     </table>
+
+    <form method="post" action="@Url.Action("GenerateQRCode", "PointSale")">
+        <button type="submit">Сохранить QR-коды</button>
+    </form>
 }
 else
 {
