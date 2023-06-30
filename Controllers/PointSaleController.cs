@@ -1,125 +1,57 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using AdminQRCodeMVC.Models;
-using Newtonsoft.Json;
-using QRCoder;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using NPOI.XWPF.UserModel;
-using NPOI.SS.UserModel;
-using NPOI.SS.Util;
-using System.Drawing;
-using System.IO;
-using System.Drawing.Imaging;
-using NPOI.Util;
+using AdminQRCodeMVC.Models;
 
 namespace AdminQRCodeMVC.Controllers
 {
-    [ApiController]
-    [Route("api/pointsale")]
     public class PointSaleController : Controller
     {
-        public async Task<IActionResult> CreatePointSale()
+        private List<PointSale> _merchants; // Определение списка точек продажи
+
+        public PointSaleController()
         {
-            string url = "https://localhost:7089/api/MyApi";
-
-            using (HttpClient client = new HttpClient())
-            {
-                HttpResponseMessage response = await client.GetAsync(url);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    string json = await response.Content.ReadAsStringAsync();
-                    var data = JsonConvert.DeserializeObject<JSonPat>(json);
-
-                    if (data.merchants != null && data.merchants.Count > 0)
-                    {
-                        return View(data.merchants);
-                        
-                    }
-                }
-            }
-
-            return View(new List<PointSale>());
+            _merchants = new List<PointSale>(); // Инициализация списка точек продажи
         }
 
-        //    [HttpPost]
-        //    public async Task<IActionResult> CreatePointSale()
-        //    {
-        //        // Блок 1: Определение URL-адреса и пути к документу
-        //        string url = "https://localhost:7089/api/MyApi";
-        //        string documentPath = "QR_Code.docx";
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchPointSale(string searchTerm)
+        {
+            // Получение списка точек продажи из JSON данных
+            _merchants = await PointSale.GetPointSalesFromJson("https://localhost:7089/api/MyApi");
 
-        //        using (HttpClient client = new HttpClient())
-        //        {
-        //            HttpResponseMessage response = await client.GetAsync(url);
+            if (string.IsNullOrEmpty(searchTerm))
+            {
+                // Вернуть все записи
+                return View("CreatePointSale", _merchants);
+            }
 
-        //            if (response.IsSuccessStatusCode)
-        //            {
-        //                string json = await response.Content.ReadAsStringAsync();
-        //                var data = JsonConvert.DeserializeObject<JSonPat>(json);
+            // Преобразование поискового запроса в нижний регистр для сравнения без учета регистра
+            string searchTermLower = searchTerm.ToLower();
 
-        //                if (data.merchants != null && data.merchants.Count > 0)
-        //                {
-        //                    XWPFDocument document;
+            // Выполнение поиска по Id и Title
+            var searchResults = _merchants.Where(merchant =>
+                merchant.Id.ToString().Contains(searchTermLower) ||
+                merchant.Title.ToLower().Contains(searchTermLower)
+            ).ToList();
 
-        //                    // Блок 2: Проверка наличия файла документа и его открытие
-        //                    if (System.IO.File.Exists(documentPath))
-        //                    {
-        //                        using (FileStream fs = new FileStream(documentPath, FileMode.Open, FileAccess.ReadWrite))
-        //                        {
-        //                            document = new XWPFDocument(fs);
-        //                            fs.SetLength(0); // Очистить содержимое файла
-        //                        }
-        //                    }
-        //                    else
-        //                    {
-        //                        document = new XWPFDocument();
-        //                    }
+            return View("CreatePointSale", searchResults);
+        }
 
-        //                    // Блок 3: Создание QR-кода и добавление его в документ
-        //                    foreach (var merchant in data.merchants)
-        //                    {
-        //                        if (!string.IsNullOrEmpty(merchant.qr_data))
-        //                        {
-        //                            QRCodeGenerator qrGenerator = new QRCodeGenerator();
-        //                            QRCodeData qrCodeData = qrGenerator.CreateQrCode(merchant.qr_data, QRCodeGenerator.ECCLevel.Q);
-        //                            QRCode qrCode = new QRCode(qrCodeData);
-        //                            Bitmap qrCodeImage = qrCode.GetGraphic(20);
 
-        //                            using (MemoryStream imageStream = new MemoryStream())
-        //                            {
-        //                                qrCodeImage.Save(imageStream, ImageFormat.Png);
-        //                                imageStream.Position = 0;
+        public async Task<IActionResult> CreatePointSale()
+        {
+            // Получение списка точек продажи из JSON данных
+            _merchants = await PointSale.GetPointSalesFromJson("https://localhost:7089/api/MyApi");
 
-        //                                XWPFParagraph paragraph = document.CreateParagraph();
-        //                                XWPFRun run = paragraph.CreateRun();
-        //                                run.AddPicture(imageStream, (int)NPOI.XWPF.UserModel.PictureType.PNG, "QR_Code", Units.ToEMU(200), Units.ToEMU(200));
-        //                            }
-        //                        }
-        //                    }
+            if (_merchants.Count > 0)
+            {
+                return View("CreatePointSale", _merchants);
+            }
 
-        //                    // Блок 4: Создание директории для документа и его сохранение
-        //                    Directory.CreateDirectory(Path.GetDirectoryName(documentPath));
-        //                    using (FileStream fs = new FileStream(documentPath, FileMode.Create))
-        //                    {
-        //                        document.Write(fs);
-        //                    }
-
-        //                    byte[] fileBytes = System.IO.File.ReadAllBytes(documentPath);
-
-        //                    // Здесь может быть блок кода для обработки fileBytes
-
-        //                }
-        //                else
-        //                {
-        //                    return NotFound("Нет доступных данных");
-        //                }
-        //            }
-        //        }
-
-        //        return NotFound("Нет доступных данных");
-
-        //    }
+            return View("CreatePointSale", new List<PointSale>());
+        }
     }
 }

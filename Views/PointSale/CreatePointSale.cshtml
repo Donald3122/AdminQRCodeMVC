@@ -2,6 +2,11 @@
 
 <h2>Таблица данных</h2>
 
+<form method="get" action="@Url.Action("SearchPointSale", "PointSale")">
+    <input type="text" name="searchTerm" placeholder="Введите поисковый запрос">
+    <button type="submit">Поиск</button>
+</form>
+
 @if (Model != null && Model.Count > 0)
 {
     <table class="table">
