@@ -15,87 +15,111 @@ using NPOI.Util;
 
 namespace AdminQRCodeMVC.Controllers
 {
-    //fsdfseefg
     [ApiController]
     [Route("api/pointsale")]
     public class PointSaleController : Controller
     {
         public async Task<IActionResult> CreatePointSale()
         {
-            return View("CreatePointSale"); // Возвращает представление с переданным значением
+            string url = "https://localhost:7089/api/MyApi";
+
+            using (HttpClient client = new HttpClient())
+            {
+                HttpResponseMessage response = await client.GetAsync(url);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    string json = await response.Content.ReadAsStringAsync();
+                    var data = JsonConvert.DeserializeObject<JSonPat>(json);
+
+                    if (data.merchants != null && data.merchants.Count > 0)
+                    {
+                        return View(data.merchants);
+                        
+                    }
+                }
+            }
+
+            return View(new List<PointSale>());
         }
-        //[HttpPost]
-        //public async Task<IActionResult> CreatePointSale()
-        //{
-        //    string url = "https://localhost:7089/api/MyApi";
-        //    string documentPath = "QR_Code.docx";
 
-        //    using (HttpClient client = new HttpClient())
+        //    [HttpPost]
+        //    public async Task<IActionResult> CreatePointSale()
         //    {
-        //        HttpResponseMessage response = await client.GetAsync(url);
+        //        // Блок 1: Определение URL-адреса и пути к документу
+        //        string url = "https://localhost:7089/api/MyApi";
+        //        string documentPath = "QR_Code.docx";
 
-        //        if (response.IsSuccessStatusCode)
+        //        using (HttpClient client = new HttpClient())
         //        {
-        //            string json = await response.Content.ReadAsStringAsync();
-        //            var data = JsonConvert.DeserializeObject<JSonPat>(json);
+        //            HttpResponseMessage response = await client.GetAsync(url);
 
-        //            if (data.merchants != null && data.merchants.Count > 0)
+        //            if (response.IsSuccessStatusCode)
         //            {
-        //                XWPFDocument document;
-        //                if (System.IO.File.Exists(documentPath))
+        //                string json = await response.Content.ReadAsStringAsync();
+        //                var data = JsonConvert.DeserializeObject<JSonPat>(json);
+
+        //                if (data.merchants != null && data.merchants.Count > 0)
         //                {
-        //                    using (FileStream fs = new FileStream(documentPath, FileMode.Open, FileAccess.ReadWrite))
+        //                    XWPFDocument document;
+
+        //                    // Блок 2: Проверка наличия файла документа и его открытие
+        //                    if (System.IO.File.Exists(documentPath))
         //                    {
-        //                        document = new XWPFDocument(fs);
-        //                        fs.SetLength(0); // Очистить содержимое файла
+        //                        using (FileStream fs = new FileStream(documentPath, FileMode.Open, FileAccess.ReadWrite))
+        //                        {
+        //                            document = new XWPFDocument(fs);
+        //                            fs.SetLength(0); // Очистить содержимое файла
+        //                        }
         //                    }
+        //                    else
+        //                    {
+        //                        document = new XWPFDocument();
+        //                    }
+
+        //                    // Блок 3: Создание QR-кода и добавление его в документ
+        //                    foreach (var merchant in data.merchants)
+        //                    {
+        //                        if (!string.IsNullOrEmpty(merchant.qr_data))
+        //                        {
+        //                            QRCodeGenerator qrGenerator = new QRCodeGenerator();
+        //                            QRCodeData qrCodeData = qrGenerator.CreateQrCode(merchant.qr_data, QRCodeGenerator.ECCLevel.Q);
+        //                            QRCode qrCode = new QRCode(qrCodeData);
+        //                            Bitmap qrCodeImage = qrCode.GetGraphic(20);
+
+        //                            using (MemoryStream imageStream = new MemoryStream())
+        //                            {
+        //                                qrCodeImage.Save(imageStream, ImageFormat.Png);
+        //                                imageStream.Position = 0;
+
+        //                                XWPFParagraph paragraph = document.CreateParagraph();
+        //                                XWPFRun run = paragraph.CreateRun();
+        //                                run.AddPicture(imageStream, (int)NPOI.XWPF.UserModel.PictureType.PNG, "QR_Code", Units.ToEMU(200), Units.ToEMU(200));
+        //                            }
+        //                        }
+        //                    }
+
+        //                    // Блок 4: Создание директории для документа и его сохранение
+        //                    Directory.CreateDirectory(Path.GetDirectoryName(documentPath));
+        //                    using (FileStream fs = new FileStream(documentPath, FileMode.Create))
+        //                    {
+        //                        document.Write(fs);
+        //                    }
+
+        //                    byte[] fileBytes = System.IO.File.ReadAllBytes(documentPath);
+
+        //                    // Здесь может быть блок кода для обработки fileBytes
+
         //                }
         //                else
         //                {
-        //                    document = new XWPFDocument();
+        //                    return NotFound("Нет доступных данных");
         //                }
-
-        //                foreach (var merchant in data.merchants)
-        //                {
-        //                    if (!string.IsNullOrEmpty(merchant.qr_data))
-        //                    {
-        //                        QRCodeGenerator qrGenerator = new QRCodeGenerator();
-        //                        QRCodeData qrCodeData = qrGenerator.CreateQrCode(merchant.qr_data, QRCodeGenerator.ECCLevel.Q);
-        //                        QRCode qrCode = new QRCode(qrCodeData);
-        //                        Bitmap qrCodeImage = qrCode.GetGraphic(20);
-
-        //                        using (MemoryStream imageStream = new MemoryStream())
-        //                        {
-        //                            qrCodeImage.Save(imageStream, ImageFormat.Png);
-        //                            imageStream.Position = 0;
-
-        //                            XWPFParagraph paragraph = document.CreateParagraph();
-        //                            XWPFRun run = paragraph.CreateRun();
-        //                            run.AddPicture(imageStream, (int)NPOI.XWPF.UserModel.PictureType.PNG, "QR_Code", Units.ToEMU(200), Units.ToEMU(200));
-        //                        }
-        //                    }
-        //                }
-
-        //                Directory.CreateDirectory(Path.GetDirectoryName(documentPath));
-        //                using (FileStream fs = new FileStream(documentPath, FileMode.Create))
-        //                {
-        //                    document.Write(fs);
-        //                }
-
-        //                byte[] fileBytes = System.IO.File.ReadAllBytes(documentPath);
-
-
-
-        //            }
-        //            else
-        //            {
-        //                return NotFound("Нет доступных данных");
         //            }
         //        }
+
+        //        return NotFound("Нет доступных данных");
+
         //    }
-
-        //    return NotFound("Нет доступных данных");
-
-        //}
     }
 }

@@ -1,8 +1,32 @@
-﻿@{
-    ViewData["Title"] = "CreatePointSale";
+﻿@model List<AdminQRCodeMVC.Models.PointSale>
+
+<h2>Таблица данных</h2>
+
+@if (Model != null && Model.Count > 0)
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Название</th>
+                <th>Статус</th>
+                <th>QR-код</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Id</td>
+                    <td>@item.Title</td>
+                    <td>@item.State</td>
+                    <td>@item.qr_data</td>
+                </tr>
+            }
+        </tbody>
+    </table>
 }
-
-<h2>Страница видна</h2>
-
-
-
+else
+{
+    <p>Нет доступных данных</p>
+}
