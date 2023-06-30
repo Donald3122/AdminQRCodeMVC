@@ -8,6 +8,7 @@ using AdminQRCodeMVC.Models;
 using QRCoder;
 using System.Drawing.Imaging;
 using System.Drawing;
+using NPOI.XWPF.UserModel;
 
 namespace AdminQRCodeMVC.Controllers
 {
@@ -90,13 +91,25 @@ namespace AdminQRCodeMVC.Controllers
                 }
             }
 
-            // Сохранение ссылок на QR-коды в файле "QR_Codes.txt"
-            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "QR_Codes.txt");
-            System.IO.File.WriteAllLines(filePath, qrCodeLinks);
+            // Сохранение ссылок на QR-коды в файле "QR_Code.docx"
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "QR_Code.docx");
+
+            XWPFDocument doc = new XWPFDocument();
+            foreach (var qrCodeLink in qrCodeLinks)
+            {
+                XWPFParagraph paragraph = doc.CreateParagraph();
+                XWPFRun run = paragraph.CreateRun();
+                run.SetText(qrCodeLink);
+                doc.CreateParagraph(); // Добавляем пустой абзац между ссылками
+            }
+
+            using (FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+            {
+                doc.Write(fs);
+            }
 
             // Перенаправление на страницу точек продажи после сохранения qr-кодов
             return RedirectToAction("CreatePointSale");
-
         }
     }
 }
