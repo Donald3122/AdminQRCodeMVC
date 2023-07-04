@@ -9,6 +9,7 @@ using QRCoder;
 using System.Drawing.Imaging;
 using System.Drawing;
 using NPOI.XWPF.UserModel;
+using NPOI.Util;
 
 namespace AdminQRCodeMVC.Controllers
 {
@@ -58,58 +59,83 @@ namespace AdminQRCodeMVC.Controllers
             return View("CreatePointSale", new List<PointSale>());
         }
 
-        [HttpPost]
-        public IActionResult GenerateQRCode(int id)
+        private byte[] GetQRCodeImageBytes(string qrCodeUrl)
         {
-            if (_merchants == null)
+            // Реализуйте логику для получения байтов изображения QR-кода по URL
+            // Возвращайте null, если не удалось получить изображение
+
+            // Пример реализации, используя QRCodeGenerator:
+            QRCodeGenerator qrGenerator = new QRCodeGenerator();
+            QRCodeData qrCodeData = qrGenerator.CreateQrCode(qrCodeUrl, QRCodeGenerator.ECCLevel.Q);
+            QRCode qrCode = new QRCode(qrCodeData);
+
+            using (Bitmap qrCodeImage = qrCode.GetGraphic(20))
+            using (MemoryStream ms = new MemoryStream())
             {
-                // Если _merchants не инициализирован, выполните соответствующие действия или верните ошибку
-                return RedirectToAction("CreatePointSale");
+                qrCodeImage.Save(ms, ImageFormat.Png);
+                return ms.ToArray();
+            }
+        }
+
+        [HttpGet("qr-code/{url}")]
+        public IActionResult GetQRCodeImage(string url)
+        {
+            byte[] qrCodeBytes = GetQRCodeImageBytes(url);
+
+            if (qrCodeBytes != null)
+            {
+                return File(qrCodeBytes, "image/png");
             }
 
-            // Создаем список ссылок на QR-коды
-            List<string> qrCodeLinks = new List<string>();
+            // Вернуть изображение-заглушку или другое сообщение об ошибке
+            return NotFound();
+        }
 
-            foreach (var pointSale in _merchants)
+        [HttpPost]
+        public IActionResult GenerateQRCode(List<string> qrCodeUrls)
+        {
+            // Проверяем, что были переданы ссылки на QR-коды
+            if (qrCodeUrls != null && qrCodeUrls.Count > 0)
             {
-                // Создание qr-кода на основе данных точки продажи
-                QRCodeGenerator qrGenerator = new QRCodeGenerator();
-                QRCodeData qrCodeData = qrGenerator.CreateQrCode(pointSale.qr_data, QRCodeGenerator.ECCLevel.Q);
-                QRCode qrCode = new QRCode(qrCodeData);
+                // Создаем новый документ Word
+                XWPFDocument doc = new XWPFDocument();
 
-                using (Bitmap qrCodeImage = qrCode.GetGraphic(10))
-                using (MemoryStream ms = new MemoryStream())
+                // Добавляем каждую ссылку на QR-код в документ Word
+                foreach (string url in qrCodeUrls)
                 {
-                    qrCodeImage.Save(ms, ImageFormat.Png);
-                    byte[] qrCodeBytes = ms.ToArray();
+                    // Получаем изображение QR-кода по ссылке
+                    byte[] qrCodeBytes = GetQRCodeImageBytes(url);
 
-                    // Преобразование изображения qr-кода в строку Base64
-                    string qrCodeImageBase64 = Convert.ToBase64String(qrCodeBytes);
+                    if (qrCodeBytes != null)
+                    {
+                        // Создание параграфа и добавление изображения QR-кода в документ Word
+                        var paragraph = doc.CreateParagraph();
+                        var run = paragraph.CreateRun();
 
-                    // Добавляем ссылку на QR-код в список
-                    qrCodeLinks.Add(qrCodeImageBase64);
+                        using (MemoryStream ms = new MemoryStream(qrCodeBytes))
+                        {
+                            run.AddPicture(ms, (int)PictureType.PNG, "QR_Code.png", Units.ToEMU(500), Units.ToEMU(500));
+                        }
+                        run.AddBreak(BreakType.PAGE); // Создание разрыва страницы
+                    }
                 }
+
+                // Сохранение документа Word в файле QR_Code.docx
+                string filePath = "QR_Code.docx";
+                using (FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+                {
+                    doc.Write(fs);
+                }
+
+                // Возвращаем результат скачивания файла
+                byte[] fileBytes = System.IO.File.ReadAllBytes(filePath);
+                string fileName = "QR_Code.docx";
+                return File(fileBytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", fileName);
             }
 
-            // Сохранение ссылок на QR-коды в файле "QR_Code.docx"
-            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "QR_Code.docx");
-
-            XWPFDocument doc = new XWPFDocument();
-            foreach (var qrCodeLink in qrCodeLinks)
-            {
-                XWPFParagraph paragraph = doc.CreateParagraph();
-                XWPFRun run = paragraph.CreateRun();
-                run.SetText(qrCodeLink);
-                doc.CreateParagraph(); // Добавляем пустой абзац между ссылками
-            }
-
-            using (FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.Write))
-            {
-                doc.Write(fs);
-            }
-
-            // Перенаправление на страницу точек продажи после сохранения qr-кодов
+            // Перенаправление на страницу точек продажи после сохранения QR-кодов
             return RedirectToAction("CreatePointSale");
         }
+
     }
 }

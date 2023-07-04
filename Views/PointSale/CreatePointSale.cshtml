@@ -30,20 +30,11 @@
                     <td>@pointSale.Title</td>
                     <td>@pointSale.State</td>
                     <td>
-                        @if (!string.IsNullOrEmpty(pointSale.qr_data))
+                        @if (!string.IsNullOrEmpty(pointSale.QrData))
                         {
-                            QRCodeGenerator qrGenerator = new QRCodeGenerator();
-                            QRCodeData qrCodeData = qrGenerator.CreateQrCode(pointSale.qr_data, QRCodeGenerator.ECCLevel.Q);
-                            QRCode qrCode = new QRCode(qrCodeData);
+                            string qrCodeUrl = Url.Action("GetQRCodeImage", "PointSale", new { url = pointSale.QrData });
 
-                            using (Bitmap qrCodeImage = qrCode.GetGraphic(10))
-                            using (MemoryStream ms = new MemoryStream())
-                            {
-                                qrCodeImage.Save(ms, ImageFormat.Png);
-                                byte[] qrCodeBytes = ms.ToArray();
-                                string qrCodeBase64 = Convert.ToBase64String(qrCodeBytes);
-                                <img src="data:image/png;base64,@qrCodeBase64" alt="QR-код" />
-                            }
+                            <img src="@qrCodeUrl" alt="QR-код" width="150" height="150"/>// Устанавливаю размер при выводе на странице  
                         }
                         else
                         {
@@ -56,6 +47,10 @@
     </table>
 
     <form method="post" action="@Url.Action("GenerateQRCode", "PointSale")">
+        @for (int i = 0; i < Model.Count; i++)
+        {
+            <input type="hidden" name="qrCodeUrls" value="@Model[i].QrData" />
+        }
         <button type="submit">Сохранить QR-коды</button>
     </form>
 }

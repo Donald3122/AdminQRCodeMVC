@@ -10,7 +10,7 @@ namespace AdminQRCodeMVC.Models
         public int Id { get; set; }
         public string Title { get; set; }
         public int State { get; set; }
-        public string qr_data { get; set; }
+        public string QrData { get; set; }
 
         public PointSale()
         {
