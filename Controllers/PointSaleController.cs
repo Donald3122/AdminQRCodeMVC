@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,17 +15,32 @@ namespace AdminQRCodeMVC.Controllers
     public class PointSaleController : Controller
     {
         private List<PointSale> _merchants; // Определение списка точек продажи
+        private readonly IConfiguration _configuration;
+        private readonly string _apiUrl;
 
-        public PointSaleController()
+        public PointSaleController(IConfiguration configuration)
         {
-            _merchants = new List<PointSale>(); // Инициализация списка точек продажи
+            _configuration = configuration;
+            _apiUrl = _configuration["ApiUrls:MyApi"];
+        
+            
+            // Инициализация списка точек продажи
+            _merchants = new List<PointSale>();
+
+            // Заполнение списка точек продажи из JSON данных
+            FillMerchantsList();
+        }
+
+        private async Task FillMerchantsList()
+        {
+            _merchants = await PointSale.GetPointSalesFromJson(_apiUrl);
         }
 
         [HttpGet("search")]
         public async Task<IActionResult> SearchPointSale(string searchTerm)
         {
             // Получение списка точек продажи из JSON данных
-            _merchants = await PointSale.GetPointSalesFromJson("https://localhost:7089/api/MyApi");
+            _merchants = await PointSale.GetPointSalesFromJson(_apiUrl);
 
             if (string.IsNullOrEmpty(searchTerm))
             {
@@ -49,7 +63,7 @@ namespace AdminQRCodeMVC.Controllers
         public async Task<IActionResult> CreatePointSale()
         {
             // Получение списка точек продажи из JSON данных
-            _merchants = await PointSale.GetPointSalesFromJson("https://localhost:7089/api/MyApi");
+            _merchants = await PointSale.GetPointSalesFromJson(_apiUrl);
 
             if (_merchants.Count > 0)
             {
@@ -91,8 +105,17 @@ namespace AdminQRCodeMVC.Controllers
             return NotFound();
         }
 
+        private byte[] SaveWordDocument(XWPFDocument doc, string fileName)
+        {
+            using (MemoryStream ms = new MemoryStream())
+            {
+                doc.Write(ms);
+                return ms.ToArray();
+            }
+        }
+
         [HttpPost]
-        public IActionResult GenerateQRCode(List<string> qrCodeUrls)
+        public IActionResult GenerateQRCode(List<string> qrCodeUrls) // Сохранение всех отфильтрованных записей
         {
             // Проверяем, что были переданы ссылки на QR-коды
             if (qrCodeUrls != null && qrCodeUrls.Count > 0)
@@ -100,42 +123,151 @@ namespace AdminQRCodeMVC.Controllers
                 // Создаем новый документ Word
                 XWPFDocument doc = new XWPFDocument();
 
-                // Добавляем каждую ссылку на QR-код в документ Word
-                foreach (string url in qrCodeUrls)
+                // Добавляем каждую запись с QR-кодом и данными в документ Word
+                for (int i = 0; i < qrCodeUrls.Count; i++)
                 {
+                    string qrCodeUrl = qrCodeUrls[i];
+
                     // Получаем изображение QR-кода по ссылке
-                    byte[] qrCodeBytes = GetQRCodeImageBytes(url);
+                    byte[] qrCodeBytes = GetQRCodeImageBytes(qrCodeUrl);
 
                     if (qrCodeBytes != null)
                     {
-                        // Создание параграфа и добавление изображения QR-кода в документ Word
+                        // Создание параграфа и добавление данных записи в документ Word
                         var paragraph = doc.CreateParagraph();
+                        paragraph.Alignment = ParagraphAlignment.LEFT;
+
                         var run = paragraph.CreateRun();
+                        run.FontSize = 14;
+                        run.IsBold = true;
+                        run.SetText("ID: " + _merchants[i].Id);
+
+                        paragraph = doc.CreateParagraph();
+                        paragraph.Alignment = ParagraphAlignment.LEFT;
+
+                        run = paragraph.CreateRun();
+                        run.FontSize = 14;
+                        run.IsBold = true;
+                        run.SetText("Название: " + _merchants[i].Title);
+
+                        paragraph = doc.CreateParagraph();
+                        paragraph.Alignment = ParagraphAlignment.LEFT;
+
+                        run = paragraph.CreateRun();
+                        run.FontSize = 14;
+                        run.IsBold = true;
+                        run.SetText("Статус: " + _merchants[i].State);
+
+                        // Добавление изображения QR-кода в документ Word
+                        paragraph = doc.CreateParagraph();
+                        paragraph.Alignment = ParagraphAlignment.CENTER;
+
+                        run = paragraph.CreateRun();
 
                         using (MemoryStream ms = new MemoryStream(qrCodeBytes))
                         {
-                            run.AddPicture(ms, (int)PictureType.PNG, "QR_Code.png", Units.ToEMU(500), Units.ToEMU(500));
+                            run.AddPicture(ms, (int)PictureType.PNG, "QR_Code.png", Units.ToEMU(300), Units.ToEMU(300));
                         }
+
+                        // Добавление ссылки в документ Word
+                        paragraph = doc.CreateParagraph();
+                        paragraph.Alignment = ParagraphAlignment.LEFT;
+
+                        run = paragraph.CreateRun();
+                        run.FontSize = 14;
+                        run.IsBold = true;
+                        run.SetText("Ссылка: " + qrCodeUrl);
+
                         run.AddBreak(BreakType.PAGE); // Создание разрыва страницы
                     }
                 }
 
-                // Сохранение документа Word в файле QR_Code.docx
-                string filePath = "QR_Code.docx";
-                using (FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.Write))
-                {
-                    doc.Write(fs);
-                }
+                // Сохранение документа Word в байтовый массив
+                string fileName = "QR_Code.docx";
+                byte[] documentBytes = SaveWordDocument(doc, fileName);
 
                 // Возвращаем результат скачивания файла
-                byte[] fileBytes = System.IO.File.ReadAllBytes(filePath);
-                string fileName = "QR_Code.docx";
-                return File(fileBytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", fileName);
+                return File(documentBytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", fileName);
             }
 
             // Перенаправление на страницу точек продажи после сохранения QR-кодов
             return RedirectToAction("CreatePointSale");
         }
 
+
+        [HttpPost]
+        public IActionResult SaveOneQRCode(int index) // Сохранение одной записи
+        {
+            // Получение списка точек продажи из JSON данных
+            var merchants = PointSale.GetPointSalesFromJson(_apiUrl).Result;
+
+            if (index >= 0 && index < merchants.Count)
+            {
+                PointSale pointSale = merchants[index];
+
+                // Создание документа Word для одной записи и QR-кода
+                XWPFDocument doc = new XWPFDocument();
+
+                // Добавление данных записи в документ Word
+                var paragraph = doc.CreateParagraph();
+                paragraph.Alignment = ParagraphAlignment.LEFT;
+
+                var run = paragraph.CreateRun();
+                run.FontSize = 14;
+                run.IsBold = true;
+                run.SetText("ID: " + pointSale.Id);
+
+                paragraph = doc.CreateParagraph();
+                paragraph.Alignment = ParagraphAlignment.LEFT;
+
+                run = paragraph.CreateRun();
+                run.FontSize = 14;
+                run.IsBold = true;
+                run.SetText("Название: " + pointSale.Title);
+
+                paragraph = doc.CreateParagraph();
+                paragraph.Alignment = ParagraphAlignment.LEFT;
+
+                run = paragraph.CreateRun();
+                run.FontSize = 14;
+                run.IsBold = true;
+                run.SetText("Статус: " + pointSale.State);
+
+                // Добавление изображения QR-кода в документ Word
+                byte[] qrCodeBytes = GetQRCodeImageBytes(pointSale.QrData);
+
+                if (qrCodeBytes != null)
+                {
+                    paragraph = doc.CreateParagraph();
+                    paragraph.Alignment = ParagraphAlignment.CENTER;
+
+                    run = paragraph.CreateRun();
+
+                    using (MemoryStream ms = new MemoryStream(qrCodeBytes))
+                    {
+                        run.AddPicture(ms, (int)PictureType.PNG, "QR_Code.png", Units.ToEMU(300), Units.ToEMU(300));
+                    }
+                }
+
+                // Добавление ссылки в документ Word
+                paragraph = doc.CreateParagraph();
+                paragraph.Alignment = ParagraphAlignment.LEFT;
+
+                run = paragraph.CreateRun();
+                run.FontSize = 14;
+                run.IsBold = true;
+                run.SetText("Ссылка: " + pointSale.QrData);
+
+                // Сохранение документа Word в байтовый массив
+                string fileName = $"QR_Code_{index}.docx";
+                byte[] documentBytes = SaveWordDocument(doc, fileName);
+
+                // Возвращаем результат скачивания файла
+                return File(documentBytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", fileName);
+            }
+
+            // Если не удалось сохранить QR-код, перенаправляем на страницу точек продажи
+            return RedirectToAction("CreatePointSale");
+        }
     }
 }

@@ -6,11 +6,18 @@
 
 <h2>Таблица данных</h2>
 
-<form method="get" action="@Url.Action("SearchPointSale", "PointSale")">
+<form method="get" action="@Url.Action("SearchPointSale", "PointSale")" style="display: inline-block;">
     <input type="text" name="searchTerm" placeholder="Введите поисковый запрос">
     <button type="submit">Поиск</button>
 </form>
 
+<form method="post" action="@Url.Action("GenerateQRCode", "PointSale")" style="display: inline-block;">
+    @for (int i = 0; i < Model.Count; i++)
+    {
+        <input type="hidden" name="qrCodeUrls" value="@Model[i].QrData" />
+    }
+    <button type="submit">Сохранить QR-коды</button>
+</form>
 @if (Model != null && Model.Count > 0)
 {
     <table class="table">
@@ -20,39 +27,38 @@
                 <th>Название</th>
                 <th>Статус</th>
                 <th>QR-код</th>
+                <th>Сохранить</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var pointSale in Model)
+            @for (int i = 0; i < Model.Count; i++)
             {
                 <tr>
-                    <td>@pointSale.Id</td>
-                    <td>@pointSale.Title</td>
-                    <td>@pointSale.State</td>
+                    <td>@Model[i].Id</td>
+                    <td>@Model[i].Title</td>
+                    <td>@Model[i].State</td>
                     <td>
-                        @if (!string.IsNullOrEmpty(pointSale.QrData))
+                        @if (!string.IsNullOrEmpty(Model[i].QrData))
                         {
-                            string qrCodeUrl = Url.Action("GetQRCodeImage", "PointSale", new { url = pointSale.QrData });
-
-                            <img src="@qrCodeUrl" alt="QR-код" width="150" height="150"/>// Устанавливаю размер при выводе на странице  
+                            string qrCodeUrl = Url.Action("GetQRCodeImage", "PointSale", new { url = Model[i].QrData });
+                            <img src="@qrCodeUrl" alt="QR-код" width="150" height="150" />
                         }
                         else
                         {
                             <span>QR-код отсутствует</span>
                         }
                     </td>
+                    <td>
+                        <form method="post" action="@Url.Action("SaveOneQRCode", "PointSale")">
+                            <input type="hidden" name="index" value="@i" />
+                            <button type="submit">Сохранить</button>
+                        </form>
+                    </td>
                 </tr>
             }
         </tbody>
     </table>
 
-    <form method="post" action="@Url.Action("GenerateQRCode", "PointSale")">
-        @for (int i = 0; i < Model.Count; i++)
-        {
-            <input type="hidden" name="qrCodeUrls" value="@Model[i].QrData" />
-        }
-        <button type="submit">Сохранить QR-коды</button>
-    </form>
 }
 else
 {
