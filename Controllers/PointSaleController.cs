@@ -194,16 +194,12 @@ namespace AdminQRCodeMVC.Controllers
             return RedirectToAction("CreatePointSale");
         }
 
-
         [HttpPost]
         public IActionResult SaveOneQRCode(int index) // Сохранение одной записи
         {
-            // Получение списка точек продажи из JSON данных
-            var merchants = PointSale.GetPointSalesFromJson(_apiUrl).Result;
-
-            if (index >= 0 && index < merchants.Count)
+            if (index >= 0 && index < _merchants.Count)
             {
-                PointSale pointSale = merchants[index];
+                PointSale pointSale = _merchants[index];
 
                 // Создание документа Word для одной записи и QR-кода
                 XWPFDocument doc = new XWPFDocument();
@@ -269,5 +265,6 @@ namespace AdminQRCodeMVC.Controllers
             // Если не удалось сохранить QR-код, перенаправляем на страницу точек продажи
             return RedirectToAction("CreatePointSale");
         }
+
     }
 }
