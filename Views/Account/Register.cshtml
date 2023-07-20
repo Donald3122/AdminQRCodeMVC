@@ -1,0 +1,18 @@
+﻿@model AdminQRCodeMVC.ViewModels.RegisterViewModel
+
+<h2>Регистрация</h2>
+<form asp-controller="Account" asp-action="Register" method="post">
+    <div>
+        <label asp-for="Email">Email:</label>
+        <input asp-for="Email" />
+    </div>
+    <div>
+        <label asp-for="Password">Пароль:</label>
+        <input asp-for="Password" type="password" />
+    </div>
+    <div>
+        <label asp-for="ConfirmPassword">Подтвердите пароль:</label>
+        <input asp-for="ConfirmPassword" type="password" />
+    </div>
+    <button type="submit">Зарегистрироваться</button>
+</form>
